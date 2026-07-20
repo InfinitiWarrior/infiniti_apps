@@ -8,3 +8,4 @@ workspace:
   - packages/core
   - packages/app_calculator
   - packages/app_voice_recorder
+  - packages/app_rss_reader
