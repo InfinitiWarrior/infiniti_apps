@@ -9,3 +9,5 @@ workspace:
   - packages/app_calculator
   - packages/app_voice_recorder
   - packages/app_rss_reader
+  - packages/app_nfc_toolkit
+  - packages/app_network_tools
