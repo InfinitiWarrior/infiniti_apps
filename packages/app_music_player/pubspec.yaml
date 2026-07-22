@@ -1,0 +1,33 @@
+name: app_music_player
+description: "Local-first music player with offline library and YouTube downloader."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  core:
+    path: ../core
+  just_audio: ^0.10.4
+  on_audio_query: ^2.9.0
+  drift: ^2.23.0
+  sqlite3_flutter_libs: ^0.5.27
+  shared_preferences: ^2.3.3
+  path: ^1.9.1
+  intl: ^0.19.0
+  collection: ^1.19.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.23.0
+  build_runner: ^2.4.15
+
+flutter:
+  uses-material-design: true

@@ -11,3 +11,4 @@ workspace:
   - packages/app_rss_reader
   - packages/app_nfc_toolkit
   - packages/app_network_tools
+  - packages/app_music_player
