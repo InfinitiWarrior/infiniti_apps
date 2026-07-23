@@ -45,6 +45,25 @@ class QueueItems extends Table {
   IntColumn get position => integer()();
 }
 
+class DownloadTasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get youtubeVideoId => text()();
+  TextColumn get title => text()();
+  TextColumn get channelTitle => text().nullable()();
+  IntColumn get durationMs => integer().nullable()();
+  TextColumn get format => text()(); // 'mp3' | 'mp4'
+  TextColumn get status =>
+      text()(); // 'queued' | 'downloading' | 'processing' | 'complete' | 'failed'
+  RealColumn get progress => real().withDefault(const Constant(0.0))();
+  TextColumn get errorMessage => text().nullable()();
+  TextColumn get filePath => text().nullable()();
+  IntColumn get trackId =>
+      integer().nullable().references(Tracks, #id, onDelete: KeyAction.setNull)();
+  DateTimeColumn get requestedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+}
+
 class PlaylistTrackEntry {
   PlaylistTrackEntry({required this.playlistTrackId, required this.track});
 
@@ -59,7 +78,9 @@ class QueueEntry {
   final Track track;
 }
 
-@DriftDatabase(tables: [Tracks, Playlists, PlaylistTracks, QueueItems])
+@DriftDatabase(
+  tables: [Tracks, Playlists, PlaylistTracks, QueueItems, DownloadTasks],
+)
 class MusicDatabase extends _$MusicDatabase {
   MusicDatabase() : super(openAppConnection('music_player.sqlite'));
 
@@ -122,6 +143,10 @@ class MusicDatabase extends _$MusicDatabase {
   Future<Track> insertDownloadedTrack(TracksCompanion companion) async {
     final id = await into(tracks).insert(companion);
     return (select(tracks)..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future<Track?> getTrack(int id) {
+    return (select(tracks)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Stream<List<Playlist>> watchPlaylists() {
@@ -257,5 +282,70 @@ class MusicDatabase extends _$MusicDatabase {
 
   Future<void> clearQueue() {
     return delete(queueItems).go();
+  }
+
+  Stream<List<DownloadTask>> watchDownloadTasks() {
+    return (select(downloadTasks)
+          ..orderBy([(t) => OrderingTerm.desc(t.requestedAt)]))
+        .watch();
+  }
+
+  Future<DownloadTask> insertDownloadTask(DownloadTasksCompanion companion) async {
+    final id = await into(downloadTasks).insert(companion);
+    return (select(
+      downloadTasks,
+    )..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future<DownloadTask> getDownloadTask(int id) {
+    return (select(downloadTasks)..where((t) => t.id.equals(id))).getSingle();
+  }
+
+  Future<void> setDownloadTaskStatus(
+    int id, {
+    required String status,
+    double? progress,
+  }) {
+    return (update(downloadTasks)..where((t) => t.id.equals(id))).write(
+      DownloadTasksCompanion(
+        status: Value(status),
+        progress: progress == null ? const Value.absent() : Value(progress),
+      ),
+    );
+  }
+
+  Future<void> setDownloadTaskProgress(int id, double progress) {
+    return (update(downloadTasks)..where((t) => t.id.equals(id))).write(
+      DownloadTasksCompanion(progress: Value(progress)),
+    );
+  }
+
+  Future<void> completeDownloadTask(
+    int id, {
+    required String filePath,
+    int? trackId,
+  }) {
+    return (update(downloadTasks)..where((t) => t.id.equals(id))).write(
+      DownloadTasksCompanion(
+        status: const Value('complete'),
+        progress: const Value(1.0),
+        filePath: Value(filePath),
+        trackId: trackId == null ? const Value.absent() : Value(trackId),
+        completedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> failDownloadTask(int id, String errorMessage) {
+    return (update(downloadTasks)..where((t) => t.id.equals(id))).write(
+      DownloadTasksCompanion(
+        status: const Value('failed'),
+        errorMessage: Value(errorMessage),
+      ),
+    );
+  }
+
+  Future<void> removeDownloadTask(int id) {
+    return (delete(downloadTasks)..where((t) => t.id.equals(id))).go();
   }
 }

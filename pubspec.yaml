@@ -12,3 +12,19 @@ workspace:
   - packages/app_nfc_toolkit
   - packages/app_network_tools
   - packages/app_music_player
+
+# on_audio_query_android 1.1.0 doesn't declare an Android Gradle Plugin
+# `namespace`, which current AGP requires — patched locally (namespace added,
+# nothing else changed) since upstream hasn't published a fix.
+#
+# youtube_explode_dart 3.1.0's stream-download HTTP client silently swallows
+# connection errors from the response stream (`onError: (_) => null`, no
+# rethrow) — a failed/interrupted download just hangs the caller forever
+# with zero bytes and zero errors instead of retrying or failing. Patched
+# locally to forward the error into the library's own existing retry logic
+# instead of eating it.
+dependency_overrides:
+  on_audio_query_android:
+    path: packages/app_music_player/third_party/on_audio_query_android
+  youtube_explode_dart:
+    path: packages/app_music_player/third_party/youtube_explode_dart

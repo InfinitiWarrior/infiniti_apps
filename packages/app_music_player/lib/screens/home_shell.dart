@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/playback_controller.dart';
+import '../repositories/download_repository.dart';
 import '../repositories/music_repository.dart';
+import '../services/youtube_search_service.dart';
 import '../widgets/now_playing_bar.dart';
+import 'downloads_screen.dart';
 import 'library_screen.dart';
 import 'now_playing_screen.dart';
 import 'playlists_screen.dart';
@@ -13,10 +16,14 @@ class HomeShell extends StatefulWidget {
     super.key,
     required this.repository,
     required this.playbackController,
+    required this.youtubeSearchService,
+    required this.downloadRepository,
   });
 
   final MusicRepository repository;
   final PlaybackController playbackController;
+  final YoutubeSearchService youtubeSearchService;
+  final DownloadRepository downloadRepository;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -46,9 +53,16 @@ class _HomeShellState extends State<HomeShell> {
       SearchScreen(
         repository: widget.repository,
         playbackController: widget.playbackController,
+        youtubeSearchService: widget.youtubeSearchService,
+        downloadRepository: widget.downloadRepository,
       ),
       PlaylistsScreen(
         repository: widget.repository,
+        playbackController: widget.playbackController,
+      ),
+      DownloadsScreen(
+        downloadRepository: widget.downloadRepository,
+        musicRepository: widget.repository,
         playbackController: widget.playbackController,
       ),
     ];
@@ -80,6 +94,11 @@ class _HomeShellState extends State<HomeShell> {
                 icon: Icon(Icons.queue_music_outlined),
                 selectedIcon: Icon(Icons.queue_music),
                 label: 'Playlists',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.download_outlined),
+                selectedIcon: Icon(Icons.download),
+                label: 'Downloads',
               ),
             ],
           ),

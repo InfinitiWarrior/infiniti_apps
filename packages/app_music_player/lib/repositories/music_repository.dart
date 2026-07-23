@@ -15,6 +15,8 @@ class MusicRepository {
   Stream<List<Track>> watchTracks({String? searchQuery}) =>
       _database.watchTracks(searchQuery: searchQuery);
 
+  Future<Track?> getTrack(int id) => _database.getTrack(id);
+
   Stream<List<Playlist>> watchPlaylists() => _database.watchPlaylists();
 
   Stream<List<PlaylistTrackEntry>> watchPlaylistTracks(int playlistId) =>

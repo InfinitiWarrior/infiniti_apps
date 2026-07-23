@@ -19,7 +19,9 @@ android {
         applicationId = "com.infinitiwarrior.musicplayer"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // ffmpeg_kit_flutter_new (used by the YouTube downloader's MP3/MP4
+        // transcoding) requires API 24+.
+        minSdk = maxOf(flutter.minSdkVersion, 24)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -30,6 +32,13 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // R8 (on by default for release builds) strips something
+            // ffmpeg_kit_flutter_new's native JNI registration needs,
+            // causing a "Bad JNI version returned from JNI_OnLoad" crash on
+            // launch. Not shipping to the Play Store, so shrinking has no
+            // real upside here — just disable it.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

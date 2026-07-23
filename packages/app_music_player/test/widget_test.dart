@@ -1,9 +1,13 @@
 import 'package:app_music_player/controllers/playback_controller.dart';
 import 'package:app_music_player/database/music_database.dart';
+import 'package:app_music_player/repositories/download_repository.dart';
 import 'package:app_music_player/repositories/music_repository.dart';
 import 'package:app_music_player/screens/home_shell.dart';
 import 'package:app_music_player/services/fake_music_library_service.dart';
 import 'package:app_music_player/services/fake_music_player_service.dart';
+import 'package:app_music_player/services/fake_transcode_service.dart';
+import 'package:app_music_player/services/fake_youtube_download_service.dart';
+import 'package:app_music_player/services/fake_youtube_search_service.dart';
 import 'package:app_music_player/services/playback_state_service.dart';
 import 'package:core/core.dart';
 import 'package:drift/native.dart';
@@ -18,6 +22,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final database = MusicDatabase.forTesting(NativeDatabase.memory());
     final repository = MusicRepository(database, FakeMusicLibraryService());
+    final downloadRepository = DownloadRepository(
+      database,
+      FakeYoutubeDownloadService(),
+      FakeTranscodeService(),
+    );
     final playbackController = PlaybackController(
       repository: repository,
       playerService: FakeMusicPlayerService(),
@@ -30,6 +39,8 @@ void main() {
         home: HomeShell(
           repository: repository,
           playbackController: playbackController,
+          youtubeSearchService: FakeYoutubeSearchService(),
+          downloadRepository: downloadRepository,
         ),
       ),
     );
