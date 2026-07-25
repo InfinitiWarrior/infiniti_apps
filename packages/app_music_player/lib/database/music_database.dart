@@ -149,6 +149,12 @@ class MusicDatabase extends _$MusicDatabase {
     return (select(tracks)..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
+  /// Cascades to PlaylistTracks/QueueItems (FK `onDelete: cascade`) and nulls
+  /// out any DownloadTasks.trackId referencing it (FK `onDelete: setNull`).
+  Future<void> deleteTrack(int id) {
+    return (delete(tracks)..where((t) => t.id.equals(id))).go();
+  }
+
   Stream<List<Playlist>> watchPlaylists() {
     return (select(
       playlists,

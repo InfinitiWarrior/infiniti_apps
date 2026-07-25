@@ -18,23 +18,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _rescan() async {
     setState(() => _rescanning = true);
-    final hasPermission = await widget.repository.hasLibraryPermission();
-    if (!hasPermission) {
-      final granted = await widget.repository.requestLibraryPermission();
-      if (!granted) {
-        setState(() => _rescanning = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Storage permission is required to scan your library.'),
-            ),
-          );
-        }
-        return;
+    try {
+      await widget.repository.rescanLibrary();
+    } on LibraryPermissionDeniedException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Storage permission is required to scan your library.'),
+          ),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _rescanning = false);
     }
-    await widget.repository.rescanLibrary();
-    if (mounted) setState(() => _rescanning = false);
   }
 
   @override

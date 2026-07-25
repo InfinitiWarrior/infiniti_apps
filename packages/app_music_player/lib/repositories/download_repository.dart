@@ -56,6 +56,32 @@ class DownloadRepository {
 
   Future<void> remove(int taskId) => _database.removeDownloadTask(taskId);
 
+  /// YouTube's CDN sometimes throttles a specific stream URL (manifest
+  /// resolves fine, but the byte stream itself never yields data — surfaces
+  /// as our own [YoutubeDownloadService] timeout). Since [attempt] re-fetches
+  /// a fresh manifest each call, retrying gets a new signed URL rather than
+  /// hammering the same stuck one. Gives up after [maxAttempts].
+  Future<T> _withRetry<T>(
+    int taskId,
+    Future<T> Function() attempt, {
+    int maxAttempts = 3,
+  }) async {
+    for (var attemptNumber = 1;; attemptNumber++) {
+      try {
+        return await attempt();
+      } catch (e) {
+        if (attemptNumber >= maxAttempts) rethrow;
+        // ignore: avoid_print
+        print(
+          '[dl-trace] attempt $attemptNumber/$maxAttempts failed ($e), '
+          'retrying with a fresh manifest',
+        );
+        await _database.setDownloadTaskProgress(taskId, 0);
+        await Future.delayed(Duration(seconds: attemptNumber * 3));
+      }
+    }
+  }
+
   Future<void> _process(DownloadTask task) async {
     final format = DownloadFormat.fromName(task.format);
     final tempDir = await _ensureDir(await _tempDirectory());
@@ -66,11 +92,14 @@ class DownloadRepository {
       if (format == DownloadFormat.mp3) {
         // ignore: avoid_print
         print('[dl-trace] calling downloadBestAudio for ${task.youtubeVideoId}');
-        final audio = await _downloadService.downloadBestAudio(
-          task.youtubeVideoId,
-          tempDir,
-          onProgress: (progress) =>
-              _database.setDownloadTaskProgress(task.id, progress),
+        final audio = await _withRetry(
+          task.id,
+          () => _downloadService.downloadBestAudio(
+            task.youtubeVideoId,
+            tempDir,
+            onProgress: (progress) =>
+                _database.setDownloadTaskProgress(task.id, progress),
+          ),
         );
         // ignore: avoid_print
         print('[dl-trace] downloadBestAudio returned: ${audio.filePath}');
@@ -104,18 +133,24 @@ class DownloadRepository {
           trackId: track.id,
         );
       } else {
-        final video = await _downloadService.downloadBestVideo(
-          task.youtubeVideoId,
-          tempDir,
-          onProgress: (progress) =>
-              _database.setDownloadTaskProgress(task.id, progress * 0.5),
+        final video = await _withRetry(
+          task.id,
+          () => _downloadService.downloadBestVideo(
+            task.youtubeVideoId,
+            tempDir,
+            onProgress: (progress) =>
+                _database.setDownloadTaskProgress(task.id, progress * 0.5),
+          ),
         );
-        final audio = await _downloadService.downloadBestAudio(
-          task.youtubeVideoId,
-          tempDir,
-          onProgress: (progress) => _database.setDownloadTaskProgress(
-            task.id,
-            0.5 + progress * 0.5,
+        final audio = await _withRetry(
+          task.id,
+          () => _downloadService.downloadBestAudio(
+            task.youtubeVideoId,
+            tempDir,
+            onProgress: (progress) => _database.setDownloadTaskProgress(
+              task.id,
+              0.5 + progress * 0.5,
+            ),
           ),
         );
 

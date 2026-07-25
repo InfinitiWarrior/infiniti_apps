@@ -80,7 +80,7 @@ class PlaybackController extends ChangeNotifier {
   Future<void> playTracks(List<Track> tracks, {int startIndex = 0}) async {
     await repository.setQueue(tracks.map((t) => t.id).toList());
     await playerService.setQueue(
-      tracks.map((t) => t.filePath).toList(),
+      tracks,
       initialIndex: startIndex,
     );
     await playerService.play();
@@ -92,7 +92,7 @@ class PlaybackController extends ChangeNotifier {
     await repository.addToQueue(track.id);
     final tracks = [..._queueTracks, track];
     await playerService.setQueue(
-      tracks.map((t) => t.filePath).toList(),
+      tracks,
       initialIndex: _currentIndex ?? 0,
       initialPosition: _position,
     );
@@ -110,7 +110,7 @@ class PlaybackController extends ChangeNotifier {
       newIndex = newIndex.clamp(0, tracks.isEmpty ? 0 : tracks.length - 1);
     }
     await playerService.setQueue(
-      tracks.map((t) => t.filePath).toList(),
+      tracks,
       initialIndex: tracks.isEmpty ? 0 : newIndex,
       initialPosition: index == (_currentIndex ?? 0) ? null : _position,
     );
@@ -131,10 +131,30 @@ class PlaybackController extends ChangeNotifier {
             tracksInOrder.isEmpty ? 0 : tracksInOrder.length - 1,
           );
     await playerService.setQueue(
-      tracksInOrder.map((t) => t.filePath).toList(),
+      tracksInOrder,
       initialIndex: newIndex,
       initialPosition: _position,
     );
+  }
+
+  /// Removes [trackId] from the queue wherever it appears, correctly
+  /// resyncing the live player (stopping/skipping if it was the current
+  /// track) via the same path [removeFromQueueAt] already uses. No-op if the
+  /// track isn't queued. Call before deleting a track so a deleted file is
+  /// never left loaded in the player.
+  Future<void> removeTrackFromQueueEverywhere(int trackId) async {
+    final index = _queueTracks.indexWhere((t) => t.id == trackId);
+    if (index == -1) return;
+    final entries = await repository.watchQueue().first;
+    final entry = entries.firstWhere((e) => e.track.id == trackId);
+    await removeFromQueueAt(index, entry.queueItemId);
+  }
+
+  /// Stops playback and clears the queue entirely — "closes" whatever's
+  /// currently playing so the mini-player disappears.
+  Future<void> stop() async {
+    await repository.clearQueue();
+    await playerService.setQueue(const []);
   }
 
   Future<void> togglePlayPause() {

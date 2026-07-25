@@ -14,6 +14,17 @@ const _manifestTimeout = Duration(seconds: 20);
 // connection but fails fast on a genuine stall.
 const _downloadTimeout = Duration(seconds: 30);
 
+// The library's default manifest fetch only queries one YouTube backend
+// client (androidSdkless). Querying a few more merges in streams served by
+// different backend infrastructure — if one client's CDN endpoint is
+// stalling/throttling a video, another often isn't. All three are documented
+// by youtube_explode_dart itself as avoiding signature-deciphering/403s.
+final _ytClients = [
+  yt.YoutubeApiClient.androidSdkless,
+  yt.YoutubeApiClient.ios,
+  yt.YoutubeApiClient.tv,
+];
+
 class DownloadedStream {
   DownloadedStream({required this.filePath, required this.container});
 
@@ -86,6 +97,52 @@ class PlatformYoutubeDownloadService implements YoutubeDownloadService {
     return DownloadedStream(filePath: filePath, container: container);
   }
 
+  /// Tries [candidates] in order, falling back to the next on failure/stall.
+  /// Candidates from different backend clients hit different CDN endpoints,
+  /// so one stalling doesn't mean they all will.
+  Future<DownloadedStream> _downloadFirstWorking(
+    List<yt.StreamInfo> candidates,
+    String destinationDirectory,
+    String baseName,
+    void Function(double) onProgress,
+  ) async {
+    Object? lastError;
+    for (final streamInfo in candidates) {
+      try {
+        return await _download(
+          streamInfo,
+          destinationDirectory,
+          baseName,
+          onProgress,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print(
+          '[dl-trace] candidate stream tag=${streamInfo.tag} '
+          'throttled=${streamInfo.isThrottled} failed ($e), trying next candidate',
+        );
+        lastError = e;
+      }
+    }
+    throw lastError ?? StateError('No candidate streams available');
+  }
+
+  /// Non-throttled streams (YouTube's CDN param `ratebypass=yes`) first,
+  /// then highest bitrate — a throttled stream is the library's own
+  /// documented signal for "YouTube is deliberately capping this transfer".
+  List<T> _rankedByThrottleThenBitrate<T extends yt.StreamInfo>(
+    Iterable<T> streams,
+  ) {
+    final ranked = streams.toList()
+      ..sort((a, b) {
+        if (a.isThrottled != b.isThrottled) {
+          return a.isThrottled ? 1 : -1;
+        }
+        return b.bitrate.compareTo(a.bitrate);
+      });
+    return ranked;
+  }
+
   @override
   Future<DownloadedStream> downloadBestAudio(
     String videoId,
@@ -95,13 +152,13 @@ class PlatformYoutubeDownloadService implements YoutubeDownloadService {
     // ignore: avoid_print
     print('[dl-trace] getManifest starting for $videoId');
     final manifest = await _client.videos.streamsClient
-        .getManifest(videoId)
+        .getManifest(videoId, ytClients: _ytClients)
         .timeout(_manifestTimeout);
     // ignore: avoid_print
     print('[dl-trace] getManifest returned, audioOnly=${manifest.audioOnly.length}');
-    final streamInfo = manifest.audioOnly.withHighestBitrate();
-    return _download(
-      streamInfo,
+    final candidates = _rankedByThrottleThenBitrate(manifest.audioOnly);
+    return _downloadFirstWorking(
+      candidates,
       destinationDirectory,
       'audio_$videoId',
       onProgress,
@@ -115,7 +172,7 @@ class PlatformYoutubeDownloadService implements YoutubeDownloadService {
     required void Function(double progress) onProgress,
   }) async {
     final manifest = await _client.videos.streamsClient
-        .getManifest(videoId)
+        .getManifest(videoId, ytClients: _ytClients)
         .timeout(_manifestTimeout);
     // Prefer mp4-container video-only streams: they mux cleanly (stream
     // copy, no re-encode) with the mp4/m4a audio-only stream. Falls back to
@@ -123,12 +180,11 @@ class PlatformYoutubeDownloadService implements YoutubeDownloadService {
     final mp4Streams = manifest.videoOnly
         .where((s) => s.container.name == 'mp4')
         .toList();
-    final streamInfo = (mp4Streams.isNotEmpty
-            ? mp4Streams
-            : manifest.videoOnly.toList())
-        .bestQuality;
-    return _download(
-      streamInfo,
+    final candidates = _rankedByThrottleThenBitrate(
+      mp4Streams.isNotEmpty ? mp4Streams : manifest.videoOnly.toList(),
+    );
+    return _downloadFirstWorking(
+      candidates,
       destinationDirectory,
       'video_$videoId',
       onProgress,

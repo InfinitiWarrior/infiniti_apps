@@ -67,9 +67,11 @@ class DownloadTaskTile extends StatelessWidget {
               // to clear it short of deleting the whole app database.
               IconButton(
                 icon: const Icon(Icons.delete_outline),
-                tooltip: task.status == 'downloading' || task.status == 'processing'
-                    ? 'Cancel'
-                    : 'Remove',
+                tooltip: switch (task.status) {
+                  'downloading' || 'processing' => 'Cancel',
+                  'complete' => 'Delete',
+                  _ => 'Remove',
+                },
                 onPressed: onRemove,
               ),
             ],

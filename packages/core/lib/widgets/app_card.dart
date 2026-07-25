@@ -10,11 +10,13 @@ class AppCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.md),
     this.onTap,
+    this.onLongPress,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +24,7 @@ class AppCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(padding: padding, child: child),
       ),
     );

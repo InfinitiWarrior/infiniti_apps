@@ -38,4 +38,7 @@ class FakeMusicLibraryService implements MusicLibraryService {
       durationMs: const Duration(minutes: 2, seconds: 47).inMilliseconds,
     ),
   ];
+
+  @override
+  Future<bool> deleteDeviceAudio(List<int> deviceAudioIds) async => true;
 }

@@ -52,6 +52,14 @@ class NowPlayingScreen extends StatelessWidget {
               ),
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.close),
+            tooltip: 'Stop',
+            onPressed: () async {
+              await controller.stop();
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
         ],
       ),
       body: ListenableBuilder(

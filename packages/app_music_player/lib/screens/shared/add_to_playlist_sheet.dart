@@ -53,7 +53,7 @@ Future<void> showAddToPlaylistSheet(
                   leading: const Icon(Icons.add),
                   title: const Text('New playlist'),
                   onTap: () async {
-                    final name = await _promptPlaylistName(context);
+                    final name = await promptPlaylistName(context);
                     if (name != null && name.isNotEmpty) {
                       final playlist = await repository.createPlaylist(name);
                       await repository.addTrackToPlaylist(
@@ -76,7 +76,9 @@ Future<void> showAddToPlaylistSheet(
   );
 }
 
-Future<String?> _promptPlaylistName(BuildContext context) {
+/// Prompts for a new playlist name via a dialog. Shared by the "add to
+/// playlist" sheet and any bulk "create playlist from selection" action.
+Future<String?> promptPlaylistName(BuildContext context) {
   final controller = TextEditingController();
   return showDialog<String>(
     context: context,

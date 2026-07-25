@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:core/core.dart';
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'controllers/playback_controller.dart';
 import 'database/music_database.dart';
@@ -18,7 +19,7 @@ import 'services/transcode_service.dart';
 import 'services/youtube_download_service.dart';
 import 'services/youtube_search_service.dart';
 
-void main() {
+Future<void> main() async {
   // Must run before anything touches a platform channel (just_audio,
   // shared_preferences, on_audio_query, ...) — without it, ServicesBinding
   // isn't attached yet and those calls fail with a null-check crash instead
@@ -30,6 +31,19 @@ void main() {
   // on_audio_query and real just_audio decoding are Android/iOS-only, same
   // as `record` elsewhere in this repo — Linux gets fakes for UI iteration.
   final isMobile = Platform.isAndroid || Platform.isIOS;
+
+  // Must be called before the real AudioPlayer (inside
+  // PlatformMusicPlayerService) is constructed — it's what wires playback
+  // into an Android foreground service with notification/lock-screen
+  // controls. No Linux implementation, hence the same isMobile guard.
+  if (isMobile) {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.infinitiwarrior.musicplayer.channel.audio',
+      androidNotificationChannelName: 'Music playback',
+      androidNotificationOngoing: true,
+    );
+  }
+
   final MusicLibraryService libraryService = isMobile
       ? PlatformMusicLibraryService()
       : FakeMusicLibraryService();

@@ -1,5 +1,7 @@
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
+import '../database/music_database.dart';
 import 'repeat_mode.dart';
 
 /// Queue-aware playback control surface. Abstracted so widget tests can
@@ -14,8 +16,11 @@ abstract class MusicPlayerService {
 
   Duration? get duration;
 
+  /// Takes full [Track]s (not just file paths) so the platform implementation
+  /// can attach title/artist/duration to each `AudioSource` as a `MediaItem`
+  /// — that's what the background-playback notification displays.
   Future<void> setQueue(
-    List<String> filePaths, {
+    List<Track> tracks, {
     int initialIndex = 0,
     Duration? initialPosition,
   });
@@ -38,6 +43,17 @@ class PlatformMusicPlayerService implements MusicPlayerService {
 
   final AudioPlayer _player;
 
+  AudioSource _toAudioSource(Track track) => AudioSource.uri(
+    Uri.file(track.filePath),
+    tag: MediaItem(
+      id: track.id.toString(),
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      duration: Duration(milliseconds: track.durationMs),
+    ),
+  );
+
   @override
   Stream<Duration> get positionStream => _player.positionStream;
 
@@ -57,14 +73,14 @@ class PlatformMusicPlayerService implements MusicPlayerService {
 
   @override
   Future<void> setQueue(
-    List<String> filePaths, {
+    List<Track> tracks, {
     int initialIndex = 0,
     Duration? initialPosition,
   }) {
     return _player
         .setAudioSources(
-          filePaths.map((path) => AudioSource.uri(Uri.file(path))).toList(),
-          initialIndex: filePaths.isEmpty ? null : initialIndex,
+          tracks.map(_toAudioSource).toList(),
+          initialIndex: tracks.isEmpty ? null : initialIndex,
           initialPosition: initialPosition,
         )
         .then((_) => null);

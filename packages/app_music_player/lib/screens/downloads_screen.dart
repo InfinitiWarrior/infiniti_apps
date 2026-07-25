@@ -52,6 +52,38 @@ class DownloadsScreen extends StatelessWidget {
     );
   }
 
+  /// For a completed task this deletes the actual downloaded file (via its
+  /// linked [Track]), not just the task's history entry — otherwise "Remove"
+  /// on a finished download silently left the file behind.
+  Future<void> _removeOrDelete(BuildContext context, DownloadTask task) async {
+    if (task.status == 'complete' && task.trackId != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete download?'),
+          content: Text('This deletes "${task.title}" from your device.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      final track = await musicRepository.getTrack(task.trackId!);
+      if (track != null) {
+        await playbackController.removeTrackFromQueueEverywhere(track.id);
+        await musicRepository.deleteDownloadedTrack(track);
+      }
+    }
+    await downloadRepository.remove(task.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,7 +113,7 @@ class DownloadsScreen extends StatelessWidget {
                 task: task,
                 onTap: () => _openCompleted(context, task),
                 onRetry: () => downloadRepository.retry(task.id),
-                onRemove: () => downloadRepository.remove(task.id),
+                onRemove: () => _removeOrDelete(context, task),
               );
             },
           );

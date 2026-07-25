@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../database/music_database.dart';
 import 'music_player_service.dart';
 import 'repeat_mode.dart';
 
@@ -29,11 +30,11 @@ class FakeMusicPlayerService implements MusicPlayerService {
 
   @override
   Future<void> setQueue(
-    List<String> filePaths, {
+    List<Track> tracks, {
     int initialIndex = 0,
     Duration? initialPosition,
   }) async {
-    _currentIndex = filePaths.isEmpty ? null : initialIndex;
+    _currentIndex = tracks.isEmpty ? null : initialIndex;
     _currentIndexController.add(_currentIndex);
   }
 

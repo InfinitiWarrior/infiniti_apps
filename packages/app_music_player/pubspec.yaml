@@ -14,6 +14,7 @@ dependencies:
   core:
     path: ../core
   just_audio: ^0.10.4
+  just_audio_background: ^0.0.1-beta.17
   on_audio_query: ^2.9.0
   drift: ^2.23.0
   sqlite3_flutter_libs: ^0.5.27

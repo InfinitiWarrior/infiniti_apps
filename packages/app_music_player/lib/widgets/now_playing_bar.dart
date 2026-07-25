@@ -68,6 +68,11 @@ class NowPlayingBar extends StatelessWidget {
                     icon: const Icon(Icons.skip_next),
                     onPressed: controller.skipNext,
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: 'Stop',
+                    onPressed: controller.stop,
+                  ),
                 ],
               ),
             ),
